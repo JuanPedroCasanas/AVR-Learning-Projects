@@ -1,0 +1,62 @@
+#include <USART.h>
+#include <binaryMacro.h>
+#include <macros.h>
+#include <pinDefines.h>
+#include <portpins.h>
+#include <delay.h>
+
+#define TRANSMIT_PIN PORTD3
+#define BUTTON_PIN PORTD2
+#define TRANSMIT_LED PORTB0
+#define DEBOUNCE_TIME 5
+
+
+
+uint8_t debounce(uint8_t port, uint8_t pin) 
+{
+  if (!(port & (1 << pin))) 
+  {
+    _delay_us(DEBOUNCE_TIME);
+  }
+  
+  if (!(port & (1 << pin))) 
+  {
+  return 1; // Button pressed (low)
+  }
+  return 0;
+}
+
+
+int main (void)
+{
+  DDRD = 0b11110000; // PORTD7 - PORTD4 are used for displaying the binary. PORTD3 - PORTD2 are used for taking input from the buttons
+  DDRB = (1 << TRANSMIT_LED); //Used for displaying the 'transmit in progress' led 
+
+  PORTD = 0b00001100; //Init pullup resistors
+
+  uint8_t binaryMessage = 0x00;
+
+
+  while(1)
+  {
+    if(debounce(PIND, TRANSMIT_PIN))
+    {
+      binaryMessage = 0x00;
+      //start transmiting
+      PORTB |= (1 << TRANSMIT_LED);
+
+      for(int i = 3; i >= 0; i--)
+      {
+        _delay_ms(1000);
+
+        if(debounce(PIND, BUTTON_PIN))
+        {
+          binaryMessage |= (1 << i);
+        }
+        PORTD |= (1 << i + 4); //offset for upper part of the PORTD registry
+      }
+      PORTB &= (0 << TRANSMIT_LED);
+      PORTD &= (binaryMessage << 4); //display message on leds
+    }
+  }
+}
