@@ -1,9 +1,8 @@
 #include <USART.h>
 #include <binaryMacro.h>
 #include <macros.h>
-#include <pinDefines.h>
 #include <portpins.h>
-#include <delay.h>
+#include <util/delay.h>
 
 #define TRANSMIT_PIN PORTD3
 #define BUTTON_PIN PORTD2
@@ -42,21 +41,31 @@ int main (void)
     if(debounce(PIND, TRANSMIT_PIN))
     {
       binaryMessage = 0x00;
+      PORTD &= 0x0F; //Reset display leds
       //start transmiting
       PORTB |= (1 << TRANSMIT_LED);
 
       for(int i = 3; i >= 0; i--)
       {
-        _delay_ms(1000);
-
-        if(debounce(PIND, BUTTON_PIN))
-        {
-          binaryMessage |= (1 << i);
-        }
         PORTD |= (1 << i + 4); //offset for upper part of the PORTD registry
+        
+        for(uint16_t timeLeft = 1000; timeLeft > 0; timeLeft--)
+        {
+          if(debounce(PIND, BUTTON_PIN))
+          {
+            binaryMessage |= (1 << i);
+            PIND |= (1 << BUTTON_PIN);
+          }
+          _delay_ms(1);
+        }
+
+
+        PORTD &= (0 << i + 4);
+        _delay_ms(500);
+        
       }
       PORTB &= (0 << TRANSMIT_LED);
-      PORTD &= (binaryMessage << 4); //display message on leds
+      PORTD |= (binaryMessage << 4); //display message on leds
     }
   }
 }
